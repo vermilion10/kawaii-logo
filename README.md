@@ -2,6 +2,10 @@
 
 A browser-based editor for kawaii, VTuber-style text logos: bubbly lettering with bouncing letters, stacked outlines, an offset shadow and a two-tone fill. Everything runs on the client; text, fonts and designs never leave your browser.
 
+![Kawaii Logo Maker editing a two-tone "Kawaii" logo with a white outline, offset shadow and decorations](docs/screenshot-light.png)
+
+![The Styles tab in dark mode, previewing eight presets on a "VTuber" logo](docs/screenshot-dark.png)
+
 ## Features
 
 - **Styles**: eight ready-made looks, previewed with your own text, applied with one click. Save your own styles to reuse them on other logos.
