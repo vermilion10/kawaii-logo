@@ -1,0 +1,241 @@
+/*
+  Direction: playful kawaii chrome. The UI borrows the logo technique (fill, white ring, hard
+  offset shadow) for the title and primary buttons only, so the canvas stays the focal point.
+  Dials: ENERGY 2 / RHYTHM 2 / MOTION 1.
+*/
+
+@font-face {
+  font-family: 'Mochiy Pop P One';
+  src: url('/fonts/MochiyPopPOne-Regular.ttf') format('truetype');
+  font-display: swap;
+}
+
+:root {
+  --bg: #fff6f3;
+  --surface: #ffffff;
+  --surface-2: #fdeaea;
+  --ink: #3b2230;
+  --ink-soft: #6e5060;
+  --line: #ecd3d6;
+  --accent: #c92e52;
+  --accent-ink: #ffffff;
+  --accent-tint: #ffe0e8;
+  --hard-shadow: #3b2230;
+  --checker-a: #ffffff;
+  --checker-b: #f1e6e8;
+
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 16px;
+
+  --font-display: 'Mochiy Pop P One', 'M PLUS Rounded 1c', system-ui, sans-serif;
+  --font-ui: 'M PLUS Rounded 1c', system-ui, sans-serif;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #1d1418;
+    --surface: #271b21;
+    --surface-2: #35252e;
+    --ink: #fbeff2;
+    --ink-soft: #cdb3bd;
+    --line: #4a3540;
+    --accent: #ff7a96;
+    --accent-ink: #2a0d16;
+    --accent-tint: #4a2232;
+    --hard-shadow: #000000;
+    --checker-a: #2c2228;
+    --checker-b: #352a30;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --bg: #1d1418;
+  --surface: #271b21;
+  --surface-2: #35252e;
+  --ink: #fbeff2;
+  --ink-soft: #cdb3bd;
+  --line: #4a3540;
+  --accent: #ff7a96;
+  --accent-ink: #2a0d16;
+  --accent-tint: #4a2232;
+  --hard-shadow: #000000;
+  --checker-a: #2c2228;
+  --checker-b: #352a30;
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-weight: 500;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  line-height: 1.2;
+  margin: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 6px 14px;
+  border: 2px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Primary actions wear the logo treatment: white ring plus a hard offset shadow. */
+.btn.primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--surface);
+  box-shadow: 0 0 0 2px var(--accent), 4px 4px 0 2px var(--hard-shadow);
+  margin: 2px 6px 6px 2px;
+}
+
+.btn.primary:hover:not(:disabled) {
+  border-color: var(--surface);
+}
+
+.btn.primary:active:not(:disabled) {
+  transform: translate(3px, 3px);
+  box-shadow: 0 0 0 2px var(--accent), 1px 1px 0 2px var(--hard-shadow);
+}
+
+.btn.small {
+  min-height: 32px;
+  padding: 2px 10px;
+  font-size: 13px;
+}
+
+@media (pointer: coarse) {
+  .btn,
+  .btn.small,
+  input[type='text'],
+  input[type='number'],
+  select {
+    min-height: 44px;
+  }
+}
+
+.field-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+input[type='text'],
+input[type='number'],
+select,
+textarea {
+  width: 100%;
+  min-height: 40px;
+  padding: 6px 10px;
+  border: 2px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+input[type='range'] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+.hint {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+/* Segmented choice built from radio inputs. */
+.seg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.seg label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 4px 14px;
+  border: 2px solid var(--line);
+  border-radius: var(--r-md);
+  font-weight: 700;
+  cursor: pointer;
+}
+.seg label.on {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+}
+.seg input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  cursor: pointer;
+}
+.seg label:focus-within {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
