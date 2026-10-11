@@ -412,6 +412,24 @@
     }
   }
 
+  /* On tall phones the canvas stays pinned so changes are visible while scrolling the settings. */
+  @media (max-width: 900px) and (min-height: 560px) {
+    .canvas-area {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      height: calc(40svh + 16px);
+      min-height: 0;
+      margin: -8px 0;
+      padding: 8px 0;
+      background: var(--bg);
+    }
+    /* Keeps a focused field from being scrolled in behind the pinned canvas. */
+    :global(html) {
+      scroll-padding-top: calc(40svh + 32px);
+    }
+  }
+
   @media (max-width: 520px) {
     .tabs button {
       min-height: 44px;
