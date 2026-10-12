@@ -275,6 +275,10 @@
   </div>
 
   <footer>
+    <p class="links">
+      <a href="https://github.com/vermilion10/kawaii-logo" target="_blank" rel="noreferrer">Source code on GitHub</a>
+      <a href="https://github.com/vermilion10/kawaii-logo/issues" target="_blank" rel="noreferrer">Request a feature or report a bug</a>
+    </p>
     <p>
       Runs entirely in your browser; nothing is uploaded. Built-in fonts are licensed under the
       <a href="https://openfontlicense.org" target="_blank" rel="noreferrer">SIL Open Font License</a>.
@@ -383,7 +387,20 @@
     box-shadow: 4px 4px 0 var(--hard-shadow);
   }
   footer {
+    display: grid;
+    gap: 4px;
     padding: 4px 20px 16px;
+  }
+  footer .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 18px;
+    font-weight: 700;
+  }
+  footer .links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
   }
   footer p {
     margin: 0;
