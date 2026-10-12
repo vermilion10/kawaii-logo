@@ -8,10 +8,11 @@ A browser-based editor for kawaii, VTuber-style text logos: bubbly lettering wit
 
 ## Features
 
-- **Styles**: eight ready-made looks, previewed with your own text, applied with one click. Save your own styles to reuse them on other logos.
+- **Styles**: ten ready-made looks, previewed with your own text, applied with one click. Save your own styles to reuse them on other logos.
 - **Lettering**: each character becomes its own vector shape. A seeded "bounce" adds subtle tilt, lift and size variation, with an up-and-down or random pattern and a shuffle button.
 - **Per-letter editing**: drag any letter on the canvas, rotate it with the handle, or nudge it with the keyboard. Shift+drag moves a whole line.
 - **Multiple lines**: a main line plus any number of extra lines (for example a small Japanese reading above the name), each with its own font, size and spacing.
+- **Letter colors**: one fill for every letter, a repeating pattern of 2 to 6 colors that stripes the letters in turn, or a color picked for any single letter.
 - **Outline layers**: any number of layers, each grown outward from the whole logo with its own color, thickness and offset. The default stack is a white outline plus a shifted shadow.
 - **Two-tone fill**: color part of the letters with a wave, zigzag or straight cut, or draw your own shape on the canvas.
 - **Decorations**: hearts, stars, sparkles, dots and flowers that merge into the outlines.
