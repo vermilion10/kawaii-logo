@@ -110,6 +110,17 @@
     editor.selection = null
   }
 
+  // iOS Safari can still scroll from SVG children despite touch-action, so active drags cancel it.
+  $effect(() => {
+    const el = svg
+    if (!el) return
+    const block = (e: TouchEvent) => {
+      if (drag) e.preventDefault()
+    }
+    el.addEventListener('touchmove', block, { passive: false })
+    return () => el.removeEventListener('touchmove', block)
+  })
+
   const angle = (x: number, y: number, cx: number, cy: number) => (Math.atan2(y - cy, x - cx) * 180) / Math.PI
 
   // Pointer events can outpace the display; only the latest position per frame is applied.
@@ -389,15 +400,18 @@
   .bg-dark {
     background: #1a1a1a;
   }
+  /* Touches on the canvas edit the logo; the settings below are where the page scrolls. */
   svg {
     display: block;
     width: 100%;
     height: 100%;
     user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    touch-action: none;
   }
   .drawing svg {
     cursor: crosshair;
-    touch-action: none;
   }
   .hit {
     fill: transparent;
