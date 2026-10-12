@@ -2,6 +2,10 @@
   import { editor } from '../lib/store.svelte'
   import { NO_OVERRIDE } from '../lib/scene'
   import Range from './Range.svelte'
+  import ColorField from './ColorField.svelte'
+  import type { Scene } from '../lib/scene'
+
+  let { scene }: { scene: Scene } = $props()
 
   const jitter = $derived(editor.design.jitter)
 
@@ -24,6 +28,24 @@
   function set(key: 'dx' | 'dy' | 'rot' | 'scale', v: number) {
     const o = edit()
     if (o) o[key] = v
+  }
+
+  // The colour the letter shows right now, whether it comes from the fill, the pattern or a pick.
+  const shownColor = $derived.by(() => {
+    if (!target) return '#000000'
+    if (scene.fills.length === 1) return scene.fills[0].color
+    const i = scene.letters.findIndex((l) => l.blockId === target.block.id && l.index === target.index)
+    return scene.fills[i]?.color ?? editor.design.fill
+  })
+
+  function setColor(v: string) {
+    const o = edit()
+    if (o) o.color = v
+  }
+
+  function clearColor() {
+    const o = target?.block.overrides[target.index]
+    if (o) delete o.color
   }
 
   function resetLetter() {
@@ -61,13 +83,19 @@
         Editing “{target.char}”. Drag it on the canvas, or Shift+drag to move the whole line. Arrow keys nudge, [ and ]
         rotate.
       </p>
+      <ColorField label="Letter color" bind:value={() => shownColor, setColor} />
+      {#if ov.color}
+        <button class="btn small" type="button" onclick={clearColor}>
+          Use the {editor.design.pattern.on ? 'pattern' : 'main'} color again
+        </button>
+      {/if}
       <Range label="Nudge X" bind:value={() => ov.dx, (v) => set('dx', v)} min={-200} max={200} unit="px" />
       <Range label="Nudge Y" bind:value={() => ov.dy, (v) => set('dy', v)} min={-200} max={200} unit="px" />
       <Range label="Extra tilt" bind:value={() => ov.rot, (v) => set('rot', v)} min={-180} max={180} unit="°" />
       <Range label="Extra size" bind:value={() => ov.scale, (v) => set('scale', v)} min={0.3} max={2} step={0.01} unit="×" />
       <button class="btn small" type="button" onclick={resetLetter}>Reset this letter</button>
     {:else}
-      <p class="hint">Click a letter on the canvas, or Tab to it, to move, tilt or resize it on its own.</p>
+      <p class="hint">Click a letter on the canvas, or Tab to it, to recolor, move, tilt or resize it on its own.</p>
     {/if}
     <button class="btn small" type="button" disabled={!hasOverrides} onclick={resetAll}>Reset all letter edits</button>
   </section>

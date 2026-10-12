@@ -247,7 +247,7 @@
         {:else if tab === 'text'}
           <TextPanel onFontFile={useFontFile} />
         {:else if tab === 'letters'}
-          <LettersPanel />
+          <LettersPanel {scene} />
         {:else if tab === 'colors'}
           <ColorsPanel />
         {:else if tab === 'twotone'}
