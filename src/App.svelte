@@ -57,8 +57,15 @@
 
   const scene = $derived(buildScene(editor.design, fonts.loaded, DEFAULT_FONT))
 
+  // Reads every field so any edit schedules a history entry. Traced contours are skipped:
+  // they never change in place, and walking thousands of points on every edit is slow.
+  function touch(v: unknown): void {
+    if (Array.isArray(v)) for (const x of v) touch(x)
+    else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) if (k !== 'contours') touch(x)
+  }
+
   $effect(() => {
-    JSON.stringify(editor.design)
+    touch(editor.design)
     editor.record()
   })
 

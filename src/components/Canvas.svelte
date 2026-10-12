@@ -112,7 +112,24 @@
 
   const angle = (x: number, y: number, cx: number, cy: number) => (Math.atan2(y - cy, x - cx) * 180) / Math.PI
 
+  // Pointer events can outpace the display; only the latest position per frame is applied.
+  let pending: PointerEvent | null = null
+  let frame = 0
+
   function onMove(e: PointerEvent) {
+    if (!drag) return
+    pending = e
+    if (!frame) frame = requestAnimationFrame(flushMove)
+  }
+
+  function flushMove() {
+    frame = 0
+    const e = pending
+    pending = null
+    if (e) applyMove(e)
+  }
+
+  function applyMove(e: PointerEvent) {
     if (!drag) return
     const [x, y] = toLocal(e)
     const dx = x - drag.sx
@@ -164,6 +181,10 @@
   }
 
   function onUp() {
+    if (frame) {
+      cancelAnimationFrame(frame)
+      flushMove()
+    }
     if (!drag) return
     if (drag.kind === 'draw') {
       if (drawPts.length > 2) {
