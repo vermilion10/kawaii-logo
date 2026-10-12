@@ -130,13 +130,18 @@ export const union = (polys: Polys): Polys => clip(ClipperLib.ClipType.ctUnion, 
 export const intersect = (a: Polys, b: Polys): Polys => clip(ClipperLib.ClipType.ctIntersection, a, b)
 
 /** Grow (or shrink, with a negative delta) a shape by `px` with round joins. */
-export function offset(polys: Polys, px: number): Polys {
+export function offset(polys: Polys, px: number, arcTolerance = 0.25): Polys {
   if (px === 0 || polys.length === 0) return polys
-  const co = new ClipperLib.ClipperOffset(2, 0.25 * SCALE)
+  const co = new ClipperLib.ClipperOffset(2, arcTolerance * SCALE)
   co.AddPaths(polys, ClipperLib.JoinType.jtRound, ClipperLib.EndType.etClosedPolygon)
   const solution: Polys = []
   co.Execute(solution, px * SCALE)
   return solution
+}
+
+/** Drop vertices that sit within `px` of their neighbours; offsetting cost scales with vertex count. */
+export function simplify(polys: Polys, px: number): Polys {
+  return ClipperLib.Clipper.CleanPolygons(polys, px * SCALE).filter((p) => p.length > 2)
 }
 
 export function transformPolys(polys: Polys, m: Mat): Polys {

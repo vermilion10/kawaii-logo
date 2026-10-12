@@ -6,11 +6,13 @@ import {
   offset,
   pivotTransform,
   shift,
+  simplify,
   toPathD,
   toPolys,
   union,
   unionBoxes,
   type Contour,
+  type Mat,
 } from './geometry'
 import { decorationLayers } from './shapes'
 import { maskContour } from './mask'
@@ -63,6 +65,24 @@ function glyphContours(font: Font, glyph: Glyph, size: number): Contour[] {
     perFont.set(key, c)
   }
   return c
+}
+
+// Placed letters are cached so dragging one letter only rebuilds that letter.
+const placedCache = new WeakMap<Font, Map<string, { polys: Polys; d: string; box: Box | null }>>()
+
+function placeGlyph(font: Font, glyph: Glyph, size: number, x: number, y: number, m: Mat) {
+  let perFont = placedCache.get(font)
+  if (!perFont) placedCache.set(font, (perFont = new Map()))
+  const key = `${glyph.index}|${size}|${x}|${y}|${m.join()}`
+  let hit = perFont.get(key)
+  if (!hit) {
+    const local = glyphContours(font, glyph, size).map((c) => c.map(([px, py]) => [px + x, py + y] as [number, number]))
+    const polys = union(toPolys(local, m))
+    hit = { polys, d: toPathD(polys), box: bounds(polys) }
+    if (perFont.size > 2000) perFont.clear()
+    perFont.set(key, hit)
+  }
+  return hit
 }
 
 function mulberry32(seed: number) {
@@ -137,12 +157,10 @@ function layoutBlock(
       const cx = pen + adv / 2
       const cy = block.y - block.size * 0.36
       const m = pivotTransform(cx, cy, j.rot + ov.rot, j.scale * ov.scale, ov.dx, j.lift + ov.dy)
-      const local = glyphContours(f, g, block.size).map((c) => c.map(([x, y]) => [x + pen, y + block.y] as [number, number]))
-      const p = union(toPolys(local, m))
-      const box = bounds(p)
-      if (box) {
-        polys.push(...p)
-        letters.push({ blockId: block.id, index: i, char: ch, d: toPathD(p), box, cx: cx + ov.dx, cy: cy + j.lift + ov.dy })
+      const placed = placeGlyph(f, g, block.size, pen, block.y, m)
+      if (placed.box) {
+        polys.push(...placed.polys)
+        letters.push({ blockId: block.id, index: i, char: ch, d: placed.d, box: placed.box, cx: cx + ov.dx, cy: cy + j.lift + ov.dy })
       }
     }
     pen += adv + block.tracking
@@ -150,12 +168,79 @@ function layoutBlock(
   return { letters, polys }
 }
 
-export function buildScene(design: Design, loaded: Record<string, Font>, fallbackId: string): Scene {
+type Grown = { polys: Polys; d: string; box: Box | null }
+
+/** Small least-recently-used cache. Style previews build their own scenes next to the canvas. */
+class Lru<V> {
+  #map = new Map<string, V>()
+  #size: number
+  constructor(size: number) {
+    this.#size = size
+  }
+  get(key: string): V | undefined {
+    const v = this.#map.get(key)
+    if (v !== undefined) {
+      this.#map.delete(key)
+      this.#map.set(key, v)
+    }
+    return v
+  }
+  set(key: string, v: V): V {
+    this.#map.set(key, v)
+    if (this.#map.size > this.#size) this.#map.delete(this.#map.keys().next().value!)
+    return v
+  }
+}
+
+interface TextPart {
+  letters: LetterGeom[]
+  fill: Polys
+  fillD: string
+  textBox: Box | null
+  missing: string[]
+}
+
+// Each stage is keyed on the inputs that shape it, so colour edits, shadow shifts and
+// two-tone tweaks reuse the expensive geometry instead of rebuilding it.
+const textCache = new Lru<TextPart>(12)
+const silhouetteCache = new Lru<{ polys: Polys; grown: Map<number, Grown> }>(12)
+const maskCache = new Lru<string>(12)
+
+const decoCache = new WeakMap<object, { key: string; polys: Polys; geom: DecoGeom }>()
+
+function decorationGeom(d: Design['decorations'][number]): { key: string; polys: Polys; geom: DecoGeom } {
+  const key = [d.id, d.shape, d.x, d.y, d.size, d.rot, d.color, d.art?.oneColor, d.art?.layers.map((l) => l.color).join()].join('|')
+  const hit = decoCache.get(d)
+  if (hit && hit.key === key) return hit
+  const layers = decorationLayers(d)
+  const all = layers.length === 1 ? layers[0].polys : union(layers.flatMap((l) => l.polys))
+  const allD = toPathD(all)
+  const entry = {
+    key,
+    polys: all,
+    geom: {
+      id: d.id,
+      d: allD,
+      parts: layers.map((l) => ({ d: layers.length === 1 ? allD : toPathD(l.polys), color: l.color })),
+      box: bounds(all) ?? { x: d.x, y: d.y, w: 0, h: 0 },
+      cx: d.x,
+      cy: d.y,
+    },
+  }
+  decoCache.set(d, entry)
+  return entry
+}
+
+function textPart(design: Design, loaded: Record<string, Font>, fallbackId: string): { key: string; part: TextPart } {
+  const fonts = design.blocks.map((b) => (loaded[b.fontId] ? b.fontId : loaded[fallbackId] ? fallbackId : '-'))
+  const key = JSON.stringify([design.blocks, design.jitter, fonts])
+  const hit = textCache.get(key)
+  if (hit) return { key, part: hit }
+
   const missing = new Set<string>()
   const letters: LetterGeom[] = []
   const textPolys: Polys = []
   const fallback = loaded[fallbackId]
-
   design.blocks.forEach((block, bi) => {
     const font = loaded[block.fontId] ?? fallback
     if (!font || !block.text) return
@@ -163,40 +248,54 @@ export function buildScene(design: Design, loaded: Record<string, Font>, fallbac
     letters.push(...r.letters)
     textPolys.push(...r.polys)
   })
-
   const fill = union(textPolys)
-  const textBox = bounds(fill)
+  return { key, part: textCache.set(key, { letters, fill, fillD: toPathD(fill), textBox: bounds(fill), missing: [...missing] }) }
+}
 
-  const decoPolys: Polys = []
-  const decos: DecoGeom[] = design.decorations.map((d) => {
-    const layers = decorationLayers(d)
-    const all = layers.length === 1 ? layers[0].polys : union(layers.flatMap((l) => l.polys))
-    decoPolys.push(...all)
-    return {
-      id: d.id,
-      d: toPathD(all),
-      parts: layers.map((l) => ({ d: layers.length === 1 ? toPathD(all) : toPathD(l.polys), color: l.color })),
-      box: bounds(all) ?? { x: d.x, y: d.y, w: 0, h: 0 },
-      cx: d.x,
-      cy: d.y,
-    }
+export function buildScene(design: Design, loaded: Record<string, Font>, fallbackId: string): Scene {
+  const text = textPart(design, loaded, fallbackId)
+  const { letters, fill, textBox } = text.part
+
+  const decoGeoms = design.decorations.map(decorationGeom)
+  const decos = decoGeoms.map((g) => g.geom)
+
+  const silKey = text.key + '#' + decoGeoms.map((g) => g.key).join('#')
+  const sil =
+    silhouetteCache.get(silKey) ??
+    silhouetteCache.set(silKey, { polys: union([...fill, ...decoGeoms.flatMap((g) => g.polys)]), grown: new Map() })
+
+  const visible = design.layers.filter((l) => l.visible)
+  // An outline is several px wide, so sub-pixel detail in its input never shows; dropping it
+  // cuts the offset cost several times over.
+  let simple: Polys | null = null
+  for (const l of visible) {
+    if (sil.grown.has(l.expand)) continue
+    simple ??= simplify(sil.polys, 0.35)
+    const polys = offset(simple, l.expand, 0.3)
+    sil.grown.set(l.expand, { polys, d: toPathD(polys), box: bounds(polys) })
+  }
+
+  const layerPolys = visible.map((l) => {
+    const g = sil.grown.get(l.expand)!
+    const box = g.box && { ...g.box, x: g.box.x + l.dx, y: g.box.y + l.dy }
+    return { l, d: l.dx || l.dy ? toPathD(shift(g.polys, l.dx, l.dy)) : g.d, box }
   })
-
-  const silhouette = union([...fill, ...decoPolys])
-
-  const layerPolys = design.layers
-    .filter((l) => l.visible)
-    .map((l) => ({ l, p: shift(offset(silhouette, l.expand), l.dx, l.dy) }))
   // The first layer in the list sits right under the fill, so paint them in reverse.
-  const layers = layerPolys.map(({ l, p }) => ({ id: l.id, d: toPathD(p), color: l.color })).reverse()
+  const layers = layerPolys.map(({ l, d }) => ({ id: l.id, d, color: l.color })).reverse()
 
   let maskD = ''
   if (design.mask.kind !== 'none' && textBox) {
-    const region = maskContour(design.mask, textBox)
-    if (region) maskD = toPathD(intersect(fill, toPolys([region])))
+    const { color: _, ...shape } = design.mask
+    const mKey = text.key + '#' + JSON.stringify(shape)
+    const cached = maskCache.get(mKey)
+    if (cached !== undefined) maskD = cached
+    else {
+      const region = maskContour(design.mask, textBox)
+      maskD = maskCache.set(mKey, region ? toPathD(intersect(fill, toPolys([region]))) : '')
+    }
   }
 
-  const box = unionBoxes([textBox, ...decos.map((d) => d.box), ...layerPolys.map(({ p }) => bounds(p))]) ?? {
+  const box = unionBoxes([textBox, ...decos.map((d) => d.box), ...layerPolys.map(({ box }) => box)]) ?? {
     x: -200,
     y: -120,
     w: 400,
@@ -207,12 +306,12 @@ export function buildScene(design: Design, loaded: Record<string, Font>, fallbac
     letters,
     decos,
     layers,
-    fillD: toPathD(fill),
+    fillD: text.part.fillD,
     fillColor: design.fill,
     maskD,
     maskColor: design.mask.color,
     textBox,
     viewBox: { x: box.x - pad, y: box.y - pad, w: box.w + pad * 2, h: box.h + pad * 2 },
-    missingGlyphs: [...missing],
+    missingGlyphs: text.part.missing,
   }
 }
