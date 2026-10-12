@@ -1,11 +1,13 @@
-import { sanitizeJitter, sanitizeLayer, sanitizeMask } from './sanitize'
-import type { Design, Jitter, Mask, OutlineLayer } from './types'
+import { sanitizeJitter, sanitizeLayer, sanitizeMask, sanitizePattern } from './sanitize'
+import type { Design, Jitter, LetterPattern, Mask, OutlineLayer } from './types'
 
 /** Everything about a logo's look except its text, fonts and decorations. */
 export interface Style {
   id: string
   name: string
   fill: string
+  /** Absent means one colour for every letter. */
+  pattern?: LetterPattern
   layers: Omit<OutlineLayer, 'id'>[]
   mask: Mask
   jitter: Omit<Jitter, 'seed'>
@@ -86,6 +88,24 @@ export const PRESETS: Style[] = [
     jitter: bounce,
   },
   {
+    id: 'tangerine',
+    name: 'Tangerine stripes',
+    fill: '#f48120',
+    pattern: { on: true, colors: ['#f48120', '#faad3f'], restart: false },
+    layers: [layer(14, '#ffffff'), layer(14, '#6b6b6b', 8, 9)],
+    mask: NO_MASK,
+    jitter: bounce,
+  },
+  {
+    id: 'grape',
+    name: 'Grape stripes',
+    fill: '#7a4691',
+    pattern: { on: true, colors: ['#7a4691', '#7d7aa3'], restart: false },
+    layers: [layer(12, '#ffffff'), layer(12, '#2a2230', 4, 5)],
+    mask: NO_MASK,
+    jitter: { mode: 'alternate', rotate: 5, lift: 6, scale: 0.03 },
+  },
+  {
     id: 'flat',
     name: 'Flat',
     fill: '#e8435f',
@@ -100,6 +120,9 @@ const uid = () => Math.random().toString(36).slice(2, 9)
 /** Apply a style in place, keeping the text, fonts, letter edits, decorations and bounce seed. */
 export function applyStyle(design: Design, style: Style): void {
   design.fill = style.fill
+  design.pattern = style.pattern
+    ? { ...style.pattern, colors: [...style.pattern.colors] }
+    : { ...design.pattern, on: false }
   design.layers = style.layers.map((l) => ({ ...l, id: uid() }))
   // A preset with no freehand shape keeps the one the user drew, in case they switch back.
   design.mask = { ...style.mask, points: style.mask.points.length ? [...style.mask.points] : design.mask.points }
@@ -111,6 +134,7 @@ export function captureStyle(design: Design, name: string): Style {
     id: 'mine:' + uid(),
     name,
     fill: design.fill,
+    pattern: design.pattern.on ? { ...design.pattern, colors: [...design.pattern.colors] } : undefined,
     layers: design.layers.map(({ id: _, ...l }) => ({ ...l })),
     mask: { ...design.mask, points: design.mask.points.map((p) => [...p] as [number, number]) },
     jitter: { mode: design.jitter.mode, rotate: design.jitter.rotate, lift: design.jitter.lift, scale: design.jitter.scale },
@@ -130,6 +154,7 @@ export function loadSavedStyles(): Style[] {
         id: typeof s?.id === 'string' ? s.id.slice(0, 40) : 'mine:' + uid(),
         name: typeof s?.name === 'string' ? s.name.slice(0, 40) : 'My style',
         fill,
+        pattern: s?.pattern ? sanitizePattern(s.pattern, fill) : undefined,
         layers: Array.isArray(s?.layers) ? s.layers.slice(0, 20).map((l: unknown) => {
           const { id: __, ...rest } = sanitizeLayer(l)
           return rest
