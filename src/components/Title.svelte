@@ -21,7 +21,7 @@
   {#if scene}
     <svg viewBox="{scene.viewBox.x} {scene.viewBox.y} {scene.viewBox.w} {scene.viewBox.h}" aria-hidden="true">
       {#each scene.layers as l (l.id)}<path d={l.d} fill={l.color} />{/each}
-      <path d={scene.fillD} fill={scene.fillColor} />
+      {#each scene.fills as f, i (i)}<path d={f.d} fill={f.color} />{/each}
       {#if scene.maskD}<path d={scene.maskD} fill={scene.maskColor} />{/if}
     </svg>
     <span class="visually-hidden">Kawaii Logo Maker</span>

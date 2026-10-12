@@ -277,7 +277,7 @@
       {#each scene.layers as l (l.id)}
         <path d={l.d} fill={l.color} />
       {/each}
-      <path d={scene.fillD} fill={scene.fillColor} />
+      {#each scene.fills as f, i (i)}<path d={f.d} fill={f.color} />{/each}
       {#if scene.maskD}<path d={scene.maskD} fill={scene.maskColor} />{/if}
       {#each scene.decos as d (d.id)}
         {#each d.parts as p, i (i)}<path d={p.d} fill={p.color} />{/each}

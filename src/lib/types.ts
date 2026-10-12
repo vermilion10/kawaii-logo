@@ -13,6 +13,16 @@ export interface LetterOverride {
   dy: number
   rot: number
   scale: number
+  /** A colour picked for this letter alone; wins over the pattern and the main fill. */
+  color?: string
+}
+
+/** Letters cycle through `colors` in reading order when `on`. */
+export interface LetterPattern {
+  on: boolean
+  colors: string[]
+  /** Start the cycle again at the first colour on every line. */
+  restart: boolean
 }
 
 export interface TextBlock {
@@ -93,6 +103,7 @@ export interface Design {
   version: 1
   blocks: TextBlock[]
   fill: string
+  pattern: LetterPattern
   jitter: Jitter
   layers: OutlineLayer[]
   mask: Mask

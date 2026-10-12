@@ -1,4 +1,4 @@
-import type { ArtLayer, Decoration, DecoShape, Design, Jitter, Mask, MaskKind, OutlineLayer, TextBlock } from './types'
+import type { ArtLayer, Decoration, DecoShape, Design, Jitter, LetterPattern, Mask, MaskKind, OutlineLayer, TextBlock } from './types'
 
 // Designs arrive from project files and share links, so every field is checked before use.
 // Colors in particular end up inside exported SVG markup and must be plain hex values.
@@ -23,6 +23,7 @@ function block(raw: unknown, fallbackFont: string): TextBlock {
     if (!Number.isInteger(i) || i < 0 || i > 500) continue
     const o = obj(v)
     overrides[i] = { dx: num(o.dx, 0), dy: num(o.dy, 0), rot: num(o.rot, 0, -3600, 3600), scale: num(o.scale, 1, 0.05, 20) }
+    if (typeof o.color === 'string' && HEX.test(o.color)) overrides[i].color = o.color.toLowerCase()
   }
   return {
     id: id(b.id),
@@ -68,6 +69,14 @@ export function sanitizeMask(raw: unknown): Mask {
     invert: m.invert === true,
     points,
   }
+}
+
+export function sanitizePattern(raw: unknown, fill = '#e8435f'): LetterPattern {
+  const p = obj(raw)
+  const colors = Array.isArray(p.colors)
+    ? p.colors.filter((c): c is string => typeof c === 'string' && HEX.test(c)).slice(0, 6).map((c) => c.toLowerCase())
+    : []
+  return { on: p.on === true && colors.length >= 2, colors: colors.length >= 2 ? colors : [fill, '#ff9cb8'], restart: p.restart === true }
 }
 
 export function sanitizeJitter(raw: unknown): Jitter {
@@ -117,6 +126,7 @@ export function sanitizeDesign(raw: unknown, fallbackFont: string): Design | nul
     version: 1,
     blocks: d.blocks.slice(0, 20).map((b) => block(b, fallbackFont)),
     fill: color(d.fill, '#e8435f'),
+    pattern: sanitizePattern(d.pattern, color(d.fill, '#e8435f')),
     jitter: sanitizeJitter(d.jitter),
     layers: Array.isArray(d.layers) ? d.layers.slice(0, 20).map(sanitizeLayer) : [],
     mask: sanitizeMask(d.mask),

@@ -42,8 +42,10 @@ export interface Scene {
   letters: LetterGeom[]
   decos: DecoGeom[]
   layers: { id: string; d: string; color: string }[]
+  /** Union of all letters, used for emptiness checks and the two-tone cut. */
   fillD: string
-  fillColor: string
+  /** What is painted: one path when every letter shares a colour, else one path per letter in order. */
+  fills: { d: string; color: string }[]
   maskD: string
   maskColor: string
   textBox: Box | null
@@ -233,7 +235,8 @@ function decorationGeom(d: Design['decorations'][number]): { key: string; polys:
 
 function textPart(design: Design, loaded: Record<string, Font>, fallbackId: string): { key: string; part: TextPart } {
   const fonts = design.blocks.map((b) => (loaded[b.fontId] ? b.fontId : loaded[fallbackId] ? fallbackId : '-'))
-  const key = JSON.stringify([design.blocks, design.jitter, fonts])
+  // Letter colours don't change any shape, so they stay out of the key and never trigger a rebuild.
+  const key = JSON.stringify([design.blocks, design.jitter, fonts], (k, v) => (k === 'color' ? undefined : v))
   const hit = textCache.get(key)
   if (hit) return { key, part: hit }
 
@@ -250,6 +253,23 @@ function textPart(design: Design, loaded: Record<string, Font>, fallbackId: stri
   })
   const fill = union(textPolys)
   return { key, part: textCache.set(key, { letters, fill, fillD: toPathD(fill), textBox: bounds(fill), missing: [...missing] }) }
+}
+
+function letterFills(design: Design, letters: LetterGeom[], unionD: string): { d: string; color: string }[] {
+  if (!letters.length) return []
+  const byId = new Map(design.blocks.map((b) => [b.id, b]))
+  const { on, colors, restart } = design.pattern
+  let k = 0
+  let line = ''
+  const resolved = letters.map((l) => {
+    if (restart && l.blockId !== line) k = 0
+    line = l.blockId
+    const base = on && colors.length ? colors[k % colors.length] : design.fill
+    k++
+    return byId.get(l.blockId)?.overrides[l.index]?.color ?? base
+  })
+  if (resolved.every((c) => c === resolved[0])) return [{ d: unionD, color: resolved[0] }]
+  return letters.map((l, i) => ({ d: l.d, color: resolved[i] }))
 }
 
 export function buildScene(design: Design, loaded: Record<string, Font>, fallbackId: string): Scene {
@@ -307,7 +327,7 @@ export function buildScene(design: Design, loaded: Record<string, Font>, fallbac
     decos,
     layers,
     fillD: text.part.fillD,
-    fillColor: design.fill,
+    fills: letterFills(design, letters, text.part.fillD),
     maskD,
     maskColor: design.mask.color,
     textBox,

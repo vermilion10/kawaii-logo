@@ -22,6 +22,7 @@ export function defaultDesign(): Design {
       newBlock({ text: 'かわいい', size: 56, x: -150, y: -150, tracking: 2 }),
     ],
     fill: '#e8435f',
+    pattern: { on: false, colors: ['#e8435f', '#ff9cb8'], restart: false },
     jitter: { seed: 7, mode: 'alternate', rotate: 6, lift: 8, scale: 0.04 },
     layers: [newLayer({ expand: 12, color: '#ffffff' }), newLayer({ expand: 12, color: '#e8435f', dx: 7, dy: 7 })],
     mask: {

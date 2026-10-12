@@ -6,7 +6,7 @@ export function sceneToSvg(scene: Scene): string {
   const { x, y, w, h } = scene.viewBox
   const paths = [
     ...scene.layers.map((l) => `<path fill="${l.color}" d="${l.d}"/>`),
-    `<path fill="${scene.fillColor}" d="${scene.fillD}"/>`,
+    ...scene.fills.map((f) => `<path fill="${f.color}" d="${f.d}"/>`),
     scene.maskD ? `<path fill="${scene.maskColor}" d="${scene.maskD}"/>` : '',
     ...scene.decos.flatMap((d) => d.parts.map((p) => `<path fill="${p.color}" d="${p.d}"/>`)),
   ].filter(Boolean)
