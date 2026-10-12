@@ -18,6 +18,19 @@
     design.layers.push(newLayer({ expand: (last?.expand ?? 0) + 6, color: '#3b2230' }))
   }
 
+  const pattern = $derived(design.pattern)
+  const picked = $derived(design.blocks.reduce((n, b) => n + Object.values(b.overrides).filter((o) => o.color).length, 0))
+
+  function setMode(on: boolean) {
+    // Turning the pattern on starts from the current fill so the first letters keep their colour.
+    if (on && !pattern.on) pattern.colors[0] = design.fill
+    pattern.on = on
+  }
+
+  function clearPicked() {
+    for (const b of design.blocks) for (const o of Object.values(b.overrides)) delete o.color
+  }
+
   const BGS: { value: PreviewBg; label: string }[] = [
     { value: 'checker', label: 'Transparent' },
     { value: 'light', label: 'White' },
@@ -28,7 +41,44 @@
 <div class="stack">
   <section>
     <h3>Letter color</h3>
-    <ColorField label="Fill" bind:value={design.fill} />
+    <div class="seg" role="radiogroup" aria-label="Letter coloring">
+      <label class:on={!pattern.on}>
+        <input type="radio" name="lettermode" checked={!pattern.on} onchange={() => setMode(false)} /> One color
+      </label>
+      <label class:on={pattern.on}>
+        <input type="radio" name="lettermode" checked={pattern.on} onchange={() => setMode(true)} /> Pattern
+      </label>
+    </div>
+    {#if pattern.on}
+      <p class="hint">Letters take these colors in turn, like stripes.</p>
+      {#each pattern.colors as _, i (i)}
+        <div class="pattern-row">
+          <ColorField label="Color {i + 1}" bind:value={pattern.colors[i]} />
+          <button
+            class="btn small"
+            type="button"
+            disabled={pattern.colors.length <= 2}
+            onclick={() => pattern.colors.splice(i, 1)}
+            aria-label="Remove color {i + 1}">Remove</button
+          >
+        </div>
+      {/each}
+      <button
+        class="btn small"
+        type="button"
+        disabled={pattern.colors.length >= 6}
+        onclick={() => pattern.colors.push(pattern.colors[pattern.colors.length - 2] ?? design.fill)}>Add a color</button
+      >
+      <label class="check"><input type="checkbox" bind:checked={pattern.restart} /> Start over on each line</label>
+    {:else}
+      <ColorField label="Fill" bind:value={design.fill} />
+    {/if}
+    <p class="hint">To color a single letter, select it on the canvas and pick its color in the Letters tab.</p>
+    {#if picked}
+      <button class="btn small" type="button" onclick={clearPicked}>
+        Clear {picked} picked letter {picked === 1 ? 'color' : 'colors'}
+      </button>
+    {/if}
   </section>
 
   <section>
@@ -87,6 +137,15 @@
   }
   h3 {
     font-size: 17px;
+  }
+  .pattern-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    gap: 8px;
+  }
+  section > .btn.small {
+    justify-self: start;
   }
   .layer {
     display: grid;
